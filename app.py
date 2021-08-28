@@ -5,17 +5,42 @@ import numpy as np
 from matplotlib import pyplot as plt
 import plotly.figure_factory as ff
 import seaborn as sns
+import base64
+from datetime import date
+from math import isclose
 
 file1 = "9x9 assigining pv full quad 07272021.xlsx"
 file2 = "9x9 spot check in pv angles 07302021.xlsx"
 file3 = "9x9 inverted cosine 08052021.xlsx"
 file4 = "9x9 inverted sine  08052021.xlsx"
 
-def select_grid():
-    modulus = 3
+st.set_page_config(layout = "wide")
+sns.set_style("whitegrid")
+
+
+def download_widget(object_to_download, download_file = "download.csv", key = None):
+    col1, col2 = st.beta_columns(2)
+    col1.write("Table shape (rows x columns):")
+    col1.write(object_to_download.shape)
+    filename = col2.text_input("Give a name to the download file", download_file, key = key)
+    my_link = download_link(object_to_download, filename, "Click to Download")
+    col2.markdown(my_link, unsafe_allow_html = True)
+
+
+def download_link(object_to_download, download_filename, download_link_text):
+    if isinstance(object_to_download,pd.DataFrame):
+        object_to_download = object_to_download.to_csv(index=False)
+    b64 = base64.b64encode(object_to_download.encode()).decode()
+    return f'<a href="data:file/txt;base64,{b64}" download="{download_filename}">{download_link_text}</a>'
+
+
+def select_grid(modulus = 3):
     with st.beta_expander("Choose grid points"):
-        st.write("Choose me!")
-        mn_list = [(m,n) for m in range(modulus) for n in range(modulus)]
+        m_bounds = st.slider("X bounds", value = (-4,4), min_value = -10, max_value = 10)
+        n_bounds = st.slider("Y bounds", value = (-4,4), min_value = -10, max_value = 10)
+        mn_list = [(m,n) for m in range(m_bounds[0], m_bounds[1]+1) \
+                         for n in range(n_bounds[0], n_bounds[1]+1)]
+        #mn_list = [(m,n) for m in range(modulus) for n in range(modulus)]
         df = pd.DataFrame({"points": mn_list})
         df[["x", "y"]] = df["points"].to_list()
         st.write(df)
@@ -23,13 +48,38 @@ def select_grid():
         st.write(plt.gcf())
     return mn_list
 
-def select_pointing_vecs():
+def select_pointing_vecs(modulus = 3):
     with st.beta_expander("Choose pointing vectors"):
-        st.write("I point!")
-        pq_list = evenly_spaced_vectors()
-        fig = ff.create_quiver([0]*9, [0]*9, *list(zip(*pq_list)))
-        st.write(fig)
-    return pq_list
+        num_vecs = st.slider("Number of vectors", value = 84, min_value = 1, max_value = 100)
+        pq_list = evenly_spaced_vectors(num = num_vecs)
+        placeholder = st.empty()
+        on_axis = [v for v in pq_list if isclose(v[0], 0, abs_tol=1e-5) or isclose(v[1],0, abs_tol=1e-5)]
+        exclude = st.multiselect(
+            "Exclude:", 
+            options = pq_list,
+            default = on_axis,
+            format_func = lambda v: "(%0.3f, %0.3f)"%(v[0], v[1])
+        )
+        include_origin = st.checkbox("Include the zero vector", value = True)
+        pq_list_edited = list(pq_list)
+        for v in exclude:
+            pq_list_edited.remove(v)
+        if include_origin:
+            pq_list_edited.insert(0, (0,0))
+        df = pd.DataFrame({"vectors": pq_list_edited})
+        df[["p", "q"]] = df["vectors"].to_list()
+        num = len(pq_list_edited)
+        st.write(df)
+        fig = ff.create_quiver(
+            [0]*num, 
+            [0]*num, 
+            *list(zip(*pq_list_edited)), 
+            scale = 1, 
+            scaleratio = 1,
+            arrow_scale = 0.07
+        )
+        placeholder.write(fig)
+    return pq_list_edited
 
 def compute_dft(df, modulus, p = "p", q = "q", m = "m", n = "n"): # also modulus
     # assert that the columns m, y, m, n are in df.
@@ -71,28 +121,45 @@ def check_sin_and_cos_matrices():
     sns.scatterplot(data = circle_df, x = "cos", y = "sin", ax = ax)
     st.write(fig)
 
+# FIXME 9x9 is hard-coded.
 def main():
-    sns.set_style("whitegrid")
-    with st.beta_expander("Check matrices"):
-        check_sin_and_cos_matrices()
-
+    #modulus = st.slider("Modulus", min_value = 2, max_value = 10, value = 3)
     modulus = 3
-    mn_list = select_grid()
-    pq_list = select_pointing_vecs()
+    st.header("Select points and vectors")
+    mn_list = select_grid(modulus = modulus)
+    pq_list = select_pointing_vecs(modulus = modulus)
+
+    st.header("Computations")
     df = compute_matrices(mn_list, pq_list, modulus)
     st.write(df)
-    st.write(df.shape)
+    download_widget(
+        df, 
+        key="computations_download", 
+        download_file = "9x9_computations_" + str(date.today()) + ".csv"
+    )
     # Plot
-    fig, ax = plt.subplots()
-    sns.scatterplot(data = df, x = "cos", y = "sin", ax = ax)
-    st.write(fig)
+    plot_zetas = False
+    if plot_zetas:
+        fig, ax = plt.subplots()
+        sns.scatterplot(data = df, x = "cos", y = "sin", ax = ax)
+        st.write(fig)
 
     cos_df = pd.pivot(data = df, index = "pq", columns = "mn", values = "cos")
     sin_df = pd.pivot(data = df, index = "pq", columns = "mn", values = "sin")
-    st.write("Cosine matrix")
-    st.write(cos_df)
-    st.write("Sine matrix")
-    st.write(sin_df)
+
+    st.header("Complex matrix")
+    complex_mat = np.matrix(cos_df) + np.matrix(sin_df)*1j
+    complex_df = pd.DataFrame(complex_mat).applymap(lambda z: "%0.3f + %0.3fi"%(z.real, z.imag)) 
+    complex_df.index = cos_df.index
+    complex_df.columns = cos_df.columns
+    st.write(complex_df)
+    det = np.linalg.det(complex_mat)
+    st.write("Determinant:", det)
+    download_widget(
+        complex_df, 
+        key="complex_download",
+        download_file = "9x9_g_%s.csv"%(str(date.today()))
+    )
 
 
 
