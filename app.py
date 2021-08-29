@@ -20,7 +20,7 @@ sns.set_style("whitegrid")
 
 def download_widget(object_to_download, download_file = "download.csv", key = None):
     col1, col2 = st.beta_columns(2)
-    col1.write("Table shape (rows x beta_columns):")
+    col1.write("Table shape (rows x columns):")
     col1.write(object_to_download.shape)
     filename = col2.text_input("Give a name to the download file", download_file, key = key)
     my_link = download_link(object_to_download, filename, "Click to Download")
@@ -83,7 +83,7 @@ def select_pointing_vecs(modulus = 3):
     return pq_list_edited
 
 def compute_dft(df, modulus, p = "p", q = "q", m = "m", n = "n"): # also modulus
-    # assert that the beta_columns m, y, m, n are in df.
+    # assert that the columns m, y, m, n are in df.
     df["dot"] = df[p] * df[m] + df[q] * df[n]
     df["angle"] = df["dot"] * 2 / modulus
     df["cos"] = np.cos(df["angle"] * math.pi)
@@ -147,14 +147,14 @@ def main():
         sns.scatterplot(data = df, x = "cos", y = "sin", ax = ax)
         st.write(fig)
 
-    cos_df = pd.pivot(data = df, index = "pq", beta_columns = "mn", values = "cos")
-    sin_df = pd.pivot(data = df, index = "pq", beta_columns = "mn", values = "sin")
+    cos_df = pd.pivot(data = df, index = "pq", columns = "mn", values = "cos")
+    sin_df = pd.pivot(data = df, index = "pq", columns = "mn", values = "sin")
 
     st.header("Complex matrix")
     complex_mat = np.matrix(cos_df) + np.matrix(sin_df)*1j
     complex_df = pd.DataFrame(complex_mat).applymap(lambda z: "%0.3f + %0.3fi"%(z.real, z.imag)) 
     complex_df.index = cos_df.index
-    complex_df.beta_columns = cos_df.beta_columns
+    complex_df.columns = cos_df.columns
     st.write(complex_df)
     det = np.linalg.det(complex_mat)
     st.write("Determinant:", det)
