@@ -19,7 +19,7 @@ sns.set_style("whitegrid")
 
 
 def download_widget(object_to_download, download_file = "download.csv", key = None):
-    col1, col2 = st.beta_columns(2)
+    col1, col2 = st.columns(2)
     col1.write("Table shape (rows x columns):")
     col1.write(object_to_download.shape)
     filename = col2.text_input("Give a name to the download file", download_file, key = key)
@@ -40,9 +40,9 @@ def select_grid(modulus = 3):
         n_bounds = st.slider("Y bounds", value = (-4,4), min_value = -10, max_value = 10)
         mn_list = [(m,n) for m in range(m_bounds[0], m_bounds[1]+1) \
                          for n in range(n_bounds[0], n_bounds[1]+1)]
-        #mn_list = [(m,n) for m in range(modulus) for n in range(modulus)]
         df = pd.DataFrame({"points": mn_list})
         df[["x", "y"]] = df["points"].to_list()
+        df["points"] = df["points"].astype(str)
         st.write(df)
         sns.scatterplot(data = df, x = "x", y = "y")
         st.write(plt.gcf())
@@ -68,6 +68,7 @@ def select_pointing_vecs(modulus = 3):
             pq_list_edited.insert(0, (0,0))
         df = pd.DataFrame({"vectors": pq_list_edited})
         df[["p", "q"]] = df["vectors"].to_list()
+        df["vectors"] = df["vectors"].astype(str)
         num = len(pq_list_edited)
         st.write(df)
         fig = ff.create_quiver(
@@ -98,6 +99,8 @@ def compute_matrices(point_list, vec_list, modulus):
     df[["m", "n"]] = df["mn"].to_list()
     df[["p", "q"]] = df["pq"].to_list()
     df = compute_dft(df, modulus = modulus)
+    df["mn"] = df["mn"].astype(str)
+    df["pq"] = df["pq"].astype(str)
     return df
 
 def evenly_spaced_vectors(num = 9):
