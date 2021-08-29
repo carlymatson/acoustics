@@ -35,7 +35,7 @@ def download_link(object_to_download, download_filename, download_link_text):
 
 
 def select_grid(modulus = 3):
-    with st.expander("Grid Points"):
+    with st.beta_expander("Grid Points"):
         m_bounds = st.slider("X bounds", value = (-4,4), min_value = -10, max_value = 10)
         n_bounds = st.slider("Y bounds", value = (-4,4), min_value = -10, max_value = 10)
         mn_list = [(m,n) for m in range(m_bounds[0], m_bounds[1]+1) \
@@ -49,7 +49,7 @@ def select_grid(modulus = 3):
     return mn_list
 
 def select_pointing_vecs(modulus = 3):
-    with st.expander("Pointing Vectors"):
+    with st.beta_expander("Pointing Vectors"):
         num_vecs = st.slider("Number of vectors", value = 84, min_value = 1, max_value = 100)
         pq_list = evenly_spaced_vectors(num = num_vecs)
         placeholder = st.empty()
