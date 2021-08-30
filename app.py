@@ -85,9 +85,9 @@ def select_pointing_vecs(modulus = 3):
 def compute_dft(df, modulus, p = "p", q = "q", m = "m", n = "n"): # also modulus
     # assert that the columns m, y, m, n are in df.
     df["dot"] = df[p] * df[m] + df[q] * df[n]
-    df["angle"] = df["dot"] * 2 / modulus
-    df["cos"] = np.cos(df["angle"] * math.pi)
-    df["sin"] = np.sin(df["angle"] * math.pi)
+    df["dot * 2pi/9"] = df["dot"] * 2 * math.pi / modulus
+    df["cos"] = np.cos(df["dot * 2pi/9"])
+    df["sin"] = np.sin(df["dot * 2pi/9"])
     return df
 
 def compute_matrices(point_list, vec_list, modulus):
